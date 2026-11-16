@@ -1,5 +1,8 @@
 # 🎮 LevelUp Life — Multi-User Gamified Daily Habit Tracker (PHP + SQL Database)
 
+🌐 **Live Public Website:** [https://sibanandabhuyan157-ctrl.github.io/gamified-daily-habit-tracker/](https://sibanandabhuyan157-ctrl.github.io/gamified-daily-habit-tracker/)  
+📦 **GitHub Source Repository:** [https://github.com/sibanandabhuyan157-ctrl/gamified-daily-habit-tracker](https://github.com/sibanandabhuyan157-ctrl/gamified-daily-habit-tracker)
+
 **LevelUp Life** is a full-stack, multi-user gamified daily habit tracker and growth engine built with **PHP 8+**, **PDO SQL (MySQL / MariaDB + zero-config SQLite fallback)**, **Tailwind CSS**, and **Chart.js**.
 
 Multiple users can freely **Register**, **Log In**, track both their **Present (Today)** and **Historical** daily habits, level up through RPG ranks, analyze 7-day & 30-day consistency, and compete on the **Public Adventurer Leaderboard**.
