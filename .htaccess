@@ -1,0 +1,22 @@
+# Apache Performance & Security Configuration for LevelUp Life
+DirectoryIndex index.php index.html gamified_daily_habit_tracker.html
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/json application/javascript
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# Block direct public web access to raw SQLite database files
+<FilesMatch "\.(sqlite|sqlite3|db|sql)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

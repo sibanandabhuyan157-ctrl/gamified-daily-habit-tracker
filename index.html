@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LevelUp Life - Multi-User Gamified Habit Tracker & Analytics</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#090d16',
+                            800: '#111827',
+                            700: '#1f2937',
+                            600: '#374151',
+                        },
+                        brand: {
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            400: '#818cf8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-subtle { animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Top Navigation Header -->
+    <header class="bg-dark-800/85 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-gamepad text-white text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-indigo-200 to-brand-400 bg-clip-text text-transparent">LevelUp Life</h1>
+                        <span id="db-engine-badge" class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            <i class="fa-solid fa-database mr-1 text-[9px]"></i><span id="db-engine-text">DB Ready</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 hidden sm:block">Multi-User Gamified Habit & Growth Engine</p>
+                </div>
+            </div>
+
+            <!-- Profile / Level / Auth controls in header -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <div class="hidden md:flex items-center space-x-2 bg-dark-700/60 px-3 py-1.5 rounded-full border border-gray-700/50">
+                    <span class="text-amber-400 font-bold text-xs sm:text-sm" id="header-streak-badge"><i class="fa-solid fa-fire mr-1 text-amber-500"></i> 0 Day Streak</span>
+                </div>
+                <div class="hidden sm:flex items-center space-x-2 bg-brand-600/20 border border-brand-500/30 px-3 py-1.5 rounded-full">
+                    <span class="text-xs font-semibold text-brand-400 uppercase tracking-wider">Lv.<span id="header-level">1</span></span>
+                    <span class="text-xs text-gray-300 font-medium" id="header-rank">Novice</span>
+                </div>
+
+                <!-- Authenticated User Pill -->
+                <div id="header-user-logged-in" class="hidden items-center space-x-2 bg-dark-700/80 border border-gray-700 pl-2 pr-2.5 py-1 rounded-xl">
+                    <div id="header-user-avatar" class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white uppercase">
+                        U
+                    </div>
+                    <div class="text-left hidden sm:block">
+                        <div id="header-user-name" class="text-xs font-bold text-white leading-tight">Adventurer</div>
+                        <div id="header-user-handle" class="text-[10px] text-emerald-400 leading-tight flex items-center">
+                            <i class="fa-solid fa-circle text-[6px] mr-1"></i>Synced
+                        </div>
+                    </div>
+                    <button onclick="handleLogout()" title="Log Out / Switch User" class="ml-1 text-gray-400 hover:text-rose-400 px-2 py-1 rounded-lg hover:bg-dark-600 transition text-xs flex items-center space-x-1">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="hidden lg:inline">Logout</span>
+                    </button>
+                </div>
+
+                <!-- Guest Sign In / Register Button -->
+                <div id="header-user-guest" class="flex items-center space-x-2">
+                    <button onclick="openAuthModal('login')" class="bg-dark-700 hover:bg-dark-600 border border-gray-700 text-gray-200 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-xl transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-right-to-bracket text-brand-400"></i>
+                        <span>Login</span>
+                    </button>
+                    <button onclick="openAuthModal('register')" class="bg-gradient-to-r from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-xl shadow-lg shadow-brand-500/20 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Register Free</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Guest Account Prompt Banner (hidden when logged in) -->
+        <div id="guest-cta-banner" class="bg-gradient-to-r from-indigo-950/80 via-dark-800 to-brand-900/40 border border-brand-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-500/40 flex items-center justify-center text-brand-400 shrink-0">
+                    <i class="fa-solid fa-shield-halved text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white">Save Your Habit History & Compete Globally!</h3>
+                    <p class="text-xs text-gray-300">Create a free account or log in to store your present & past habit history in the database and join the multi-user leaderboard.</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+                <button onclick="openAuthModal('register')" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-md">
+                    Create Free Account
+                </button>
+                <button onclick="openAuthModal('login')" class="bg-dark-700 hover:bg-dark-600 text-gray-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-gray-600 transition">
+                    Sign In
+                </button>
+            </div>
+        </div>
+
+        <!-- User RPG Status Bar (XP, Level, Rank Progress) -->
+        <section class="bg-gradient-to-br from-dark-800 to-dark-700 border border-gray-800 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-black shadow-lg shadow-indigo-500/30" id="user-avatar-level">
+                            1
+                        </div>
+                        <div class="absolute -bottom-1 -right-1 bg-amber-500 text-dark-900 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow">
+                            RANK
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-xl font-bold text-white" id="user-rank-title">Novice Adventurer</h2>
+                            <span class="bg-dark-600 text-brand-300 text-xs px-2.5 py-0.5 rounded-md font-semibold border border-brand-500/20" id="user-total-xp-badge">0 XP</span>
+                            <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] px-2 py-0.5 rounded-md font-medium" id="user-profile-tag">Guest Mode</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-0.5" id="user-rank-subtitle">Complete daily habits to gain XP, level up, and unlock your true potential!</p>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-4 gap-2 sm:gap-3 text-center">
+                    <div class="bg-dark-900/50 border border-gray-800 rounded-xl p-2.5">
+                        <div class="text-brand-400 font-bold text-base sm:text-lg" id="stat-completed-today">0/0</div>
+                        <div class="text-[10px] sm:text-[11px] text-gray-400 uppercase tracking-wider">Present</div>
+                    </div>
+                    <div class="bg-dark-900/50 border border-gray-800 rounded-xl p-2.5">
+                        <div class="text-amber-400 font-bold text-base sm:text-lg" id="stat-streak">0</div>
+                        <div class="text-[10px] sm:text-[11px] text-gray-400 uppercase tracking-wider">Streak</div>
+                    </div>
+                    <div class="bg-dark-900/50 border border-gray-800 rounded-xl p-2.5">
+                        <div class="text-emerald-400 font-bold text-base sm:text-lg" id="stat-rate">0%</div>
+                        <div class="text-[10px] sm:text-[11px] text-gray-400 uppercase tracking-wider">Today %</div>
+                    </div>
+                    <div class="bg-dark-900/50 border border-gray-800 rounded-xl p-2.5">
+                        <div class="text-purple-400 font-bold text-base sm:text-lg" id="stat-history-days">0</div>
+                        <div class="text-[10px] sm:text-[11px] text-gray-400 uppercase tracking-wider">Days Logged</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- XP Progress Bar -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs font-semibold">
+                    <span class="text-gray-400">XP Progress</span>
+                    <span class="text-brand-400"><span id="current-xp">0</span> / <span id="next-level-xp">100</span> XP to Level <span id="next-level-num">2</span></span>
+                </div>
+                <div class="w-full bg-dark-900 h-3 rounded-full overflow-hidden p-0.5 border border-gray-800">
+                    <div id="xp-progress-bar" class="bg-gradient-to-r from-brand-600 to-indigo-400 h-full rounded-full transition-all duration-500 shadow-sm" style="width: 0%"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <div class="flex overflow-x-auto space-x-2 border-b border-gray-800 pb-2">
+            <button onclick="switchTab('habits')" id="tab-btn-habits" class="px-4 py-2 rounded-xl text-sm font-medium transition-all bg-brand-600 text-white shadow-lg shadow-brand-500/20 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-list-check"></i>
+                <span>Present & Daily Habits</span>
+            </button>
+            <button onclick="switchTab('history')" id="tab-btn-history" class="px-4 py-2 rounded-xl text-sm font-medium transition-all bg-dark-800 text-gray-400 hover:text-white hover:bg-dark-700 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>History & Present Log</span>
+            </button>
+            <button onclick="switchTab('analytics')" id="tab-btn-analytics" class="px-4 py-2 rounded-xl text-sm font-medium transition-all bg-dark-800 text-gray-400 hover:text-white hover:bg-dark-700 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Analytics & Growth</span>
+            </button>
+            <button onclick="switchTab('leaderboard')" id="tab-btn-leaderboard" class="px-4 py-2 rounded-xl text-sm font-medium transition-all bg-dark-800 text-gray-400 hover:text-white hover:bg-dark-700 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-trophy text-amber-400"></i>
+                <span>Public Leaderboard</span>
+            </button>
+        </div>
+
+        <!-- ================= TAB 1: PRESENT & DAILY HABITS ================= -->
+        <div id="tab-habits" class="space-y-6">
+            <!-- Header bar for Date Navigation, Date Picker & Add Habit Button -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-dark-800/60 p-4 rounded-2xl border border-gray-800">
+                <div class="flex flex-wrap items-center gap-3">
+                    <button onclick="changeDate(-1)" class="w-9 h-9 bg-dark-700 hover:bg-dark-600 rounded-xl flex items-center justify-center text-gray-300 transition" title="Previous Day">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="text-center min-w-[160px]">
+                        <div class="flex items-center justify-center space-x-2">
+                            <h3 class="font-bold text-white text-base" id="current-date-display">Today (Present)</h3>
+                            <span id="present-live-pill" class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full animate-pulse-subtle">LIVE</span>
+                        </div>
+                        <p class="text-xs text-gray-400" id="current-date-sub">Loading...</p>
+                    </div>
+                    <button onclick="changeDate(1)" class="w-9 h-9 bg-dark-700 hover:bg-dark-600 rounded-xl flex items-center justify-center text-gray-300 transition" id="next-date-btn" title="Next Day">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <input type="date" id="direct-date-picker" onchange="jumpToDate(this.value)" class="bg-dark-700 border border-gray-700 text-gray-200 text-xs rounded-xl px-2.5 py-2 outline-none focus:border-brand-500" title="Jump to any date">
+                    <button onclick="resetToToday()" id="today-jump-btn" class="hidden text-xs bg-brand-600/30 text-brand-400 border border-brand-500/40 px-3 py-1.5 rounded-xl hover:bg-brand-600 hover:text-white transition font-medium">
+                        <i class="fa-solid fa-bolt mr-1"></i>Return to Present
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Filter dropdown -->
+                    <select id="habit-filter" onchange="renderHabits()" class="bg-dark-700 border border-gray-700 text-gray-200 text-sm rounded-xl px-3 py-2 outline-none focus:border-brand-500">
+                        <option value="all">All Categories</option>
+                        <option value="Exercises">Exercises</option>
+                        <option value="Daily Work">Daily Work</option>
+                        <option value="Study Times">Study Times</option>
+                        <option value="Sleep Time">Sleep Time</option>
+                        <option value="Mindfulness">Mindfulness</option>
+                        <option value="Health & Diet">Health & Diet</option>
+                    </select>
+                    <button onclick="openAddHabitModal()" class="bg-gradient-to-r from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow-lg shadow-brand-500/20 flex items-center space-x-2 transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>New Habit</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Selected Day Summary Bar -->
+            <div class="bg-dark-800/40 border border-gray-800/80 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex items-center space-x-2 text-gray-300">
+                    <i class="fa-solid fa-calendar-check text-brand-400"></i>
+                    <span>Viewing Log Status: <strong id="selected-day-summary-text" class="text-white">0 of 0 habits completed</strong></span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-amber-400 font-semibold"><i class="fa-solid fa-bolt mr-1"></i>XP Earned This Day: <span id="selected-day-xp">0 XP</span></span>
+                    <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-percent mr-1"></i>Completion: <span id="selected-day-percent">0%</span></span>
+                </div>
+            </div>
+
+            <!-- Habits List Container -->
+            <div id="habits-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Habit items populated here -->
+            </div>
+            
+            <!-- Empty state -->
+            <div id="habits-empty-state" class="hidden text-center py-16 bg-dark-800/30 border border-dashed border-gray-800 rounded-2xl">
+                <div class="w-16 h-16 bg-dark-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-500 text-2xl">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-1">No habits found</h3>
+                <p class="text-sm text-gray-400 max-w-sm mx-auto mb-4">You haven't added any habits for this filter yet. Start building your daily routine!</p>
+                <button onclick="openAddHabitModal()" class="bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition">Create First Habit</button>
+            </div>
+        </div>
+
+        <!-- ================= TAB 2: HISTORY & PRESENT LOG ================= -->
+        <div id="tab-history" class="hidden space-y-6">
+            <!-- Present vs Past Overview Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-emerald-950/40 to-dark-800 border border-emerald-500/30 rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-emerald-400 text-xs font-bold uppercase tracking-wider">Present Status (Today)</span>
+                        <span class="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-300 rounded-full font-semibold">LIVE</span>
+                    </div>
+                    <div class="text-2xl font-extrabold text-white" id="history-present-summary">0 / 0 Done</div>
+                    <div class="text-xs text-gray-400 mt-1.5" id="history-present-xp">+0 XP earned today</div>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4">
+                    <div class="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Active Days in DB</div>
+                    <div class="text-2xl font-extrabold text-brand-400" id="history-active-days">0 Days</div>
+                    <div class="text-xs text-gray-400 mt-1.5"><i class="fa-solid fa-database mr-1 text-brand-400"></i>Stored in user history</div>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4">
+                    <div class="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Total Check-ins</div>
+                    <div class="text-2xl font-extrabold text-amber-400" id="history-total-checkins">0</div>
+                    <div class="text-xs text-gray-400 mt-1.5"><i class="fa-solid fa-check-double mr-1 text-amber-500"></i>All-time completed habits</div>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4">
+                    <div class="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Perfect 100% Days</div>
+                    <div class="text-2xl font-extrabold text-purple-400" id="history-perfect-days">0 Days</div>
+                    <div class="text-xs text-gray-400 mt-1.5"><i class="fa-solid fa-star mr-1 text-purple-400"></i>Every habit completed</div>
+                </div>
+            </div>
+
+            <!-- 30-Day Consistency Heatmap (Past + Present) -->
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div>
+                        <h3 class="font-bold text-white text-base">30-Day Habit Consistency Matrix (Past & Present)</h3>
+                        <p class="text-xs text-gray-400">Click any day cell to inspect or update that date's habits.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 text-[11px] text-gray-400">
+                        <span>0%</span>
+                        <span class="w-3 h-3 rounded bg-dark-700 inline-block border border-gray-600"></span>
+                        <span class="w-3 h-3 rounded bg-emerald-900/70 inline-block"></span>
+                        <span class="w-3 h-3 rounded bg-emerald-600/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded bg-emerald-400 inline-block"></span>
+                        <span>100%</span>
+                    </div>
+                </div>
+                <div id="history-heatmap-grid" class="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-2">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Detailed History & Present Timeline -->
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="font-bold text-white text-lg">Complete Present & Historical Activity Log</h3>
+                        <p class="text-xs text-gray-400">Detailed per-habit breakdown for Today (Present) and all previous days. Click any habit badge to toggle it directly.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="history-filter-mode" onchange="renderHistoryLog()" class="bg-dark-700 border border-gray-700 text-gray-200 text-xs rounded-xl px-3 py-2 outline-none focus:border-brand-500">
+                            <option value="all30">Present + Last 30 Days</option>
+                            <option value="present">Present (Today Only)</option>
+                            <option value="logged">Days With Recorded Activity</option>
+                            <option value="perfect">100% Completed Days</option>
+                        </select>
+                        <button onclick="exportUserHistory()" class="bg-dark-700 hover:bg-dark-600 border border-gray-700 text-gray-200 text-xs font-medium px-3 py-2 rounded-xl transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-download text-brand-400"></i>
+                            <span>Export JSON</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History log cards -->
+                <div id="history-log-container" class="space-y-3">
+                    <!-- History rows populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: ANALYTICS & GROWTH ================= -->
+        <div id="tab-analytics" class="hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4">
+                    <div class="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Total XP Earned</div>
+                    <div class="text-2xl font-extrabold text-white" id="analytics-total-xp">0 XP</div>
+                    <div class="text-xs text-brand-400 mt-2 flex items-center"><i class="fa-solid fa-bolt mr-1"></i> Lifetime accumulated</div>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4">
+                    <div class="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Best Streak</div>
+                    <div class="text-2xl font-extrabold text-amber-400" id="analytics-best-streak">0 Days</div>
+                    <div class="text-xs text-gray-400 mt-2 flex items-center"><i class="fa-solid fa-fire mr-1 text-amber-500"></i> Personal record</div>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4">
+                    <div class="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Overall Completion</div>
+                    <div class="text-2xl font-extrabold text-emerald-400" id="analytics-overall-rate">0%</div>
+                    <div class="text-xs text-gray-400 mt-2 flex items-center"><i class="fa-solid fa-circle-check mr-1 text-emerald-500"></i> Past 7 days average</div>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4">
+                    <div class="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Habits Tracked</div>
+                    <div class="text-2xl font-extrabold text-indigo-400" id="analytics-total-habits">0</div>
+                    <div class="text-xs text-gray-400 mt-2 flex items-center"><i class="fa-solid fa-layer-group mr-1"></i> Active routines</div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- XP Growth Chart -->
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 shadow-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-white text-base">XP Progression (Last 7 Days)</h3>
+                        <span class="text-xs bg-brand-600/20 text-brand-400 px-2 py-1 rounded-lg">Activity</span>
+                    </div>
+                    <div class="relative h-64 w-full">
+                        <canvas id="xpChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Habit Completion Rate Chart -->
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 shadow-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-white text-base">Completion Rate % (Last 7 Days)</h3>
+                        <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-lg">Consistency</span>
+                    </div>
+                    <div class="relative h-64 w-full">
+                        <canvas id="completionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 4: PUBLIC LEADERBOARD ================= -->
+        <div id="tab-leaderboard" class="hidden space-y-6">
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="font-bold text-white text-lg flex items-center space-x-2">
+                            <i class="fa-solid fa-ranking-star text-amber-400"></i>
+                            <span>Public Multi-User Adventurer Leaderboard</span>
+                        </h3>
+                        <p class="text-xs text-gray-400">Registered users ranked by total XP and daily habit streaks.</p>
+                    </div>
+                    <div>
+                        <button onclick="refreshLeaderboard()" class="bg-dark-700 hover:bg-dark-600 border border-gray-700 text-xs text-gray-200 px-3 py-2 rounded-xl transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-arrows-rotate text-brand-400"></i>
+                            <span>Refresh Standings</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="leaderboard-container" class="space-y-3">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 py-4 text-center text-xs text-gray-500">
+        LevelUp Life Habit Tracker &bull; Multi-User PHP &amp; Database Edition &bull; Built for peak performance &amp; continuous growth.
+    </footer>
+
+    <!-- ================= AUTHENTICATION MODAL (LOGIN / REGISTER) ================= -->
+    <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm hidden p-4">
+        <div class="bg-dark-800 border border-gray-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white" id="auth-modal-title">Welcome to LevelUp Life</h3>
+                        <p class="text-xs text-gray-400" id="auth-modal-subtitle">Sign in or register to sync your habits & history</p>
+                    </div>
+                </div>
+                <button onclick="closeAuthModal()" class="text-gray-400 hover:text-white p-1.5 rounded-lg"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Mode Switcher Tabs -->
+            <div class="grid grid-cols-2 gap-2 p-1 bg-dark-900 rounded-xl border border-gray-800 mb-5">
+                <button type="button" onclick="switchAuthTab('login')" id="auth-tab-login" class="py-2 rounded-lg text-xs font-bold transition bg-brand-600 text-white">
+                    Log In
+                </button>
+                <button type="button" onclick="switchAuthTab('register')" id="auth-tab-register" class="py-2 rounded-lg text-xs font-bold transition text-gray-400 hover:text-white">
+                    Register Free
+                </button>
+            </div>
+
+            <div id="auth-error-box" class="hidden mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium"></div>
+
+            <!-- LOGIN FORM -->
+            <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Username or Email</label>
+                    <input type="text" id="login-identifier" required placeholder="Enter username or email" autocomplete="username" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                </div>
+                <button type="submit" id="login-submit-btn" class="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 shadow-lg shadow-brand-500/25 transition">
+                    Sign In to Account
+                </button>
+            </form>
+
+            <!-- REGISTER FORM -->
+            <form id="register-form" onsubmit="handleRegisterSubmit(event)" class="space-y-3.5 hidden">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Display Name</label>
+                        <input type="text" id="reg-display-name" required placeholder="e.g. Alex Hero" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Username</label>
+                        <input type="text" id="reg-username" required minlength="3" maxlength="40" placeholder="e.g. alex_99" autocomplete="username" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Email Address</label>
+                    <input type="email" id="reg-email" required placeholder="you@example.com" autocomplete="email" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Password (6+ chars)</label>
+                        <input type="password" id="reg-password" required minlength="6" placeholder="••••••••" autocomplete="new-password" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Avatar Theme</label>
+                        <select id="reg-avatar-color" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:border-brand-500 outline-none">
+                            <option value="indigo">Indigo Mage</option>
+                            <option value="emerald">Emerald Ranger</option>
+                            <option value="amber">Solar Paladin</option>
+                            <option value="rose">Crimson Samurai</option>
+                            <option value="cyan">Cyber Ninja</option>
+                        </select>
+                    </div>
+                </div>
+                <label class="flex items-center space-x-2 text-xs text-gray-300 pt-1 cursor-pointer">
+                    <input type="checkbox" id="reg-import-guest" checked class="rounded border-gray-600 bg-dark-900 text-brand-600 focus:ring-brand-500">
+                    <span>Keep &amp; import any current guest habits/history into my new account</span>
+                </label>
+                <button type="submit" id="reg-submit-btn" class="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 shadow-lg shadow-brand-500/25 transition">
+                    Create Free Account &amp; Start Leveling Up
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= ADD / EDIT HABIT MODAL ================= -->
+    <div id="habit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden p-4">
+        <div class="bg-dark-800 border border-gray-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-white" id="modal-title">Create New Habit</h3>
+                <button onclick="closeHabitModal()" class="text-gray-400 hover:text-white p-1 rounded-lg"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <form id="habit-form" onsubmit="handleHabitSubmit(event)" class="space-y-4">
+                <input type="hidden" id="habit-id">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Habit Name</label>
+                    <input type="text" id="habit-name" required placeholder="e.g. Morning Jog, Read 30 mins, 8h Sleep" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Category</label>
+                        <select id="habit-category" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-brand-500 outline-none">
+                            <option value="Exercises">Exercises</option>
+                            <option value="Daily Work">Daily Work</option>
+                            <option value="Study Times">Study Times</option>
+                            <option value="Sleep Time">Sleep Time</option>
+                            <option value="Mindfulness">Mindfulness</option>
+                            <option value="Health & Diet">Health & Diet</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Icon</label>
+                        <select id="habit-icon" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-brand-500 outline-none">
+                            <option value="fa-dumbbell">🏋️ Exercises</option>
+                            <option value="fa-briefcase">💼 Daily Work</option>
+                            <option value="fa-book-open">📚 Study Times</option>
+                            <option value="fa-bed">💤 Sleep Time</option>
+                            <option value="fa-brain">🧘 Mindfulness</option>
+                            <option value="fa-apple-whole">🥗 Health & Diet</option>
+                            <option value="fa-code">💻 Coding</option>
+                            <option value="fa-droplet">💧 Hydration</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Target Type</label>
+                        <select id="habit-target-type" onchange="toggleTargetFields()" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-brand-500 outline-none">
+                            <option value="boolean">Checkbox (Done/Not Done)</option>
+                            <option value="numeric">Measurable (e.g. Hours, Pages)</option>
+                        </select>
+                    </div>
+                    <div id="target-value-container" class="hidden">
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Target Goal</label>
+                        <input type="number" id="habit-target-goal" min="1" value="1" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div id="target-unit-container" class="hidden">
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Unit (e.g. hrs, pages)</label>
+                        <input type="text" id="habit-target-unit" placeholder="hrs, mins, pages" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">XP Reward</label>
+                        <input type="number" id="habit-xp" min="5" max="500" value="20" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-3">
+                    <button type="button" onclick="closeHabitModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-dark-700 hover:bg-dark-600 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-500 shadow-lg shadow-brand-500/20 transition">Save Habit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT & DATABASE ENGINE ================= -->
+    <script>
+        /* -------------------------------------------------------------
+           RANKS & DEFAULT STARTER HABITS
+           ------------------------------------------------------------- */
+        const RANKS = [
+            { level: 1, title: "Novice Adventurer", minXp: 0 },
+            { level: 2, title: "Apprentice", minXp: 100 },
+            { level: 3, title: "Practitioner", minXp: 250 },
+            { level: 4, title: "Expert", minXp: 500 },
+            { level: 5, title: "Master", minXp: 1000 },
+            { level: 6, title: "Grandmaster", minXp: 1800 },
+            { level: 7, title: "Legend", minXp: 3000 },
+            { level: 8, title: "Mythic Ascendant", minXp: 5000 }
+        ];
+
+        const AVATAR_GRADIENTS = {
+            indigo:  'from-indigo-500 to-purple-600',
+            emerald: 'from-emerald-500 to-teal-600',
+            amber:   'from-amber-500 to-orange-600',
+            rose:    'from-rose-500 to-pink-600',
+            cyan:    'from-cyan-500 to-blue-600'
+        };
+
+        const DEFAULT_HABITS = [
+            { id: 'h1', name: 'Morning Workout', category: 'Exercises', icon: 'fa-dumbbell', targetType: 'boolean', targetGoal: 1, targetUnit: '', xp: 25 },
+            { id: 'h2', name: 'Deep Work / Coding', category: 'Daily Work', icon: 'fa-briefcase', targetType: 'numeric', targetGoal: 4, targetUnit: 'hrs', xp: 30 },
+            { id: 'h3', name: 'Study & Reading', category: 'Study Times', icon: 'fa-book-open', targetType: 'numeric', targetGoal: 60, targetUnit: 'mins', xp: 20 },
+            { id: 'h4', name: 'Quality Sleep', category: 'Sleep Time', icon: 'fa-bed', targetType: 'numeric', targetGoal: 8, targetUnit: 'hrs', xp: 25 }
+        ];
+
+        function cloneDefaults() {
+            return JSON.parse(JSON.stringify(DEFAULT_HABITS));
+        }
+
+        function getFormattedDate(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getTodayString() {
+            return getFormattedDate(new Date());
+        }
+
+        /* -------------------------------------------------------------
+           HYBRID MULTI-USER DATABASE ADAPTER
+           1) Connects to PHP + SQL Backend (`api.php`) when served by PHP.
+           2) Automatically provides a full Multi-User Relational Store in
+              browser storage when hosted on static CDNs (e.g., GitHub Pages),
+              so registration, login, history, and leaderboards ALWAYS work!
+           ------------------------------------------------------------- */
+        const DatabaseAdapter = {
+            phpAvailable: false,
+            checkedPhp: false,
+            LOCAL_USERS_KEY: 'levelup_multiuser_db_users_v2',
+            LOCAL_SESSION_KEY: 'levelup_multiuser_session_v2',
+
+            async detectBackend() {
+                if (this.checkedPhp) return this.phpAvailable;
+                this.checkedPhp = true;
+
+                // If server-side PHP injected state directly into window.__INITIAL_SERVER_STATE__
+                if (window.__INITIAL_SERVER_STATE__) {
+                    this.phpAvailable = true;
+                    this.updateEngineBadge('PHP + SQL Active');
+                    return true;
+                }
+
+                if (window.location.protocol === 'file:') {
+                    this.phpAvailable = false;
+                    this.updateEngineBadge('Multi-User Local DB');
+                    return false;
+                }
+
+                try {
+                    const res = await fetch('api.php?action=session', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store'
+                    });
+                    const contentType = res.headers.get('content-type') || '';
+                    if (res.ok && contentType.includes('application/json')) {
+                        const json = await res.json();
+                        if (json && typeof json.ok === 'boolean') {
+                            this.phpAvailable = true;
+                            this.updateEngineBadge('PHP + SQL Active');
+                            return true;
+                        }
+                    }
+                } catch (_) {
+                    // Fallback to client multi-user DB
+                }
+                this.phpAvailable = false;
+                this.updateEngineBadge('Cloud/Browser DB Ready');
+                return false;
+            },
+
+            updateEngineBadge(label) {
+                const badge = document.getElementById('db-engine-badge');
+                const text = document.getElementById('db-engine-text');
+                if (badge && text) {
+                    text.innerText = label;
+                    badge.classList.remove('hidden');
+                }
+            },
+
+            // Helper for local multi-user table when on GitHub Pages / static host
+            getLocalUsersTable() {
+                try {
+                    const raw = localStorage.getItem(this.LOCAL_USERS_KEY);
+                    if (raw) return JSON.parse(raw);
+                } catch (_) {}
+                // Seed sample community adventurers so the public leaderboard looks vibrant
+                const seeded = {
+                    'aria_vance': {
+                        id: 101,
+                        username: 'aria_vance',
+                        email: 'aria@levelup.demo',
+                        passwordHash: 'demo_hash',
+                        displayName: 'Aria Vance',
+                        avatarColor: 'emerald',
+                        xp: 1240,
+                        totalXpEarned: 1240,
+                        bestStreak: 14,
+                        createdAt: '2026-10-15',
+                        habits: cloneDefaults(),
+                        logs: {}
+                    },
+                    'kai_zen': {
+                        id: 102,
+                        username: 'kai_zen',
+                        email: 'kai@levelup.demo',
+                        passwordHash: 'demo_hash',
+                        displayName: 'Kai Zen',
+                        avatarColor: 'amber',
+                        xp: 680,
+                        totalXpEarned: 680,
+                        bestStreak: 9,
+                        createdAt: '2026-10-28',
+                        habits: cloneDefaults(),
+                        logs: {}
+                    }
+                };
+                localStorage.setItem(this.LOCAL_USERS_KEY, JSON.stringify(seeded));
+                return seeded;
+            },
+
+            saveLocalUsersTable(table) {
+                localStorage.setItem(this.LOCAL_USERS_KEY, JSON.stringify(table));
+            },
+
+            getLocalLeaderboard() {
+                const users = Object.values(this.getLocalUsersTable());
+                users.sort((a, b) => (b.xp - a.xp) || ((b.bestStreak || 0) - (a.bestStreak || 0)));
+                return users.slice(0, 20).map((u, idx) => ({
+                    rank: idx + 1,
+                    username: u.username,
+                    displayName: u.displayName || u.username,
+                    avatarColor: u.avatarColor || 'indigo',
+                    xp: u.xp || 0,
+                    totalXpEarned: u.totalXpEarned || u.xp || 0,
+                    bestStreak: u.bestStreak || 0,
+                    joinedAt: u.createdAt || getTodayString()
+                }));
+            },
+
+            async hashPassword(password) {
+                if (window.crypto && window.crypto.subtle) {
+                    const enc = new TextEncoder().encode(password + '_levelup_salt');
+                    const buf = await window.crypto.subtle.digest('SHA-256', enc);
+                    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+                return btoa(unescape(encodeURIComponent(password + '_levelup_salt')));
+            },
+
+            async request(action, payload = {}) {
+                await this.detectBackend();
+                if (this.phpAvailable) {
+                    const res = await fetch(`api.php?action=${encodeURIComponent(action)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ action, ...payload })
+                    });
+                    return await res.json();
+                }
+
+                // Multi-User Client Database Execution (for GitHub Pages / Static Hosting)
+                const table = this.getLocalUsersTable();
+                const currentUsername = localStorage.getItem(this.LOCAL_SESSION_KEY);
+
+                if (action === 'session') {
+                    if (currentUsername && table[currentUsername]) {
+                        const u = table[currentUsername];
+                        return {
+                            ok: true,
+                            authenticated: true,
+                            data: {
+                                user: {
+                                    id: u.id,
+                                    username: u.username,
+                                    email: u.email,
+                                    displayName: u.displayName,
+                                    avatarColor: u.avatarColor || 'indigo',
+                                    xp: u.xp || 0,
+                                    totalXpEarned: u.totalXpEarned || u.xp || 0,
+                                    bestStreak: u.bestStreak || 0,
+                                    createdAt: u.createdAt
+                                },
+                                habits: u.habits || cloneDefaults(),
+                                logs: u.logs || {}
+                            },
+                            leaderboard: this.getLocalLeaderboard()
+                        };
+                    }
+                    return { ok: true, authenticated: false, data: null, leaderboard: this.getLocalLeaderboard() };
+                }
+
+                if (action === 'register') {
+                    const username = (payload.username || '').trim().toLowerCase();
+                    const email = (payload.email || '').trim().toLowerCase();
+                    const password = payload.password || '';
+                    const displayName = (payload.displayName || username).trim();
+                    const avatarColor = payload.avatarColor || 'indigo';
+
+                    if (username.length < 3) return { ok: false, error: 'Username must be at least 3 characters.' };
+                    if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' };
+
+                    for (const key of Object.keys(table)) {
+                        if (key.toLowerCase() === username) {
+                            return { ok: false, error: 'That username is already taken.' };
+                        }
+                        if ((table[key].email || '').toLowerCase() === email) {
+                            return { ok: false, error: 'An account with that email already exists.' };
+                        }
+                    }
+
+                    const passHash = await this.hashPassword(password);
+                    const guest = payload.guestState || null;
+                    const newUser = {
+                        id: Date.now(),
+                        username,
+                        email,
+                        passwordHash: passHash,
+                        displayName,
+                        avatarColor,
+                        xp: guest && guest.user ? (guest.user.xp || 0) : 0,
+                        totalXpEarned: guest && guest.user ? (guest.user.totalXpEarned || 0) : 0,
+                        bestStreak: guest && guest.user ? (guest.user.bestStreak || 0) : 0,
+                        createdAt: getTodayString(),
+                        habits: (guest && Array.isArray(guest.habits) && guest.habits.length > 0) ? guest.habits : cloneDefaults(),
+                        logs: (guest && guest.logs) ? guest.logs : {}
+                    };
+
+                    table[username] = newUser;
+                    this.saveLocalUsersTable(table);
+                    localStorage.setItem(this.LOCAL_SESSION_KEY, username);
+
+                    return {
+                        ok: true,
+                        authenticated: true,
+                        message: `Account created! Welcome to LevelUp Life, ${displayName}!`,
+                        data: {
+                            user: newUser,
+                            habits: newUser.habits,
+                            logs: newUser.logs
+                        },
+                        leaderboard: this.getLocalLeaderboard()
+                    };
+                }
+
+                if (action === 'login') {
+                    const id = (payload.identifier || '').trim().toLowerCase();
+                    const password = payload.password || '';
+                    const passHash = await this.hashPassword(password);
+
+                    let foundUser = null;
+                    for (const u of Object.values(table)) {
+                        if (u.username.toLowerCase() === id || (u.email || '').toLowerCase() === id) {
+                            foundUser = u;
+                            break;
+                        }
+                    }
+                    if (!foundUser || foundUser.passwordHash !== passHash) {
+                        return { ok: false, error: 'Invalid username/email or password.' };
+                    }
+                    localStorage.setItem(this.LOCAL_SESSION_KEY, foundUser.username);
+                    return {
+                        ok: true,
+                        authenticated: true,
+                        message: `Welcome back, ${foundUser.displayName}!`,
+                        data: {
+                            user: foundUser,
+                            habits: foundUser.habits || cloneDefaults(),
+                            logs: foundUser.logs || {}
+                        },
+                        leaderboard: this.getLocalLeaderboard()
+                    };
+                }
+
+                if (action === 'logout') {
+                    localStorage.removeItem(this.LOCAL_SESSION_KEY);
+                    return { ok: true, authenticated: false, leaderboard: this.getLocalLeaderboard() };
+                }
+
+                if (action === 'sync_state' || action === 'save_habit' || action === 'delete_habit' || action === 'log_habit') {
+                    if (currentUsername && table[currentUsername]) {
+                        const u = table[currentUsername];
+                        if (payload.state) {
+                            u.habits = payload.state.habits || u.habits;
+                            u.logs = payload.state.logs || u.logs;
+                            if (payload.state.user) {
+                                u.xp = payload.state.user.xp ?? u.xp;
+                                u.totalXpEarned = payload.state.user.totalXpEarned ?? u.totalXpEarned;
+                                u.bestStreak = Math.max(u.bestStreak || 0, payload.state.user.bestStreak || 0);
+                            }
+                        }
+                        this.saveLocalUsersTable(table);
+                    }
+                    return { ok: true, leaderboard: this.getLocalLeaderboard() };
+                }
+
+                if (action === 'leaderboard') {
+                    return { ok: true, leaderboard: this.getLocalLeaderboard() };
+                }
+
+                return { ok: true };
+            }
+        };
+
+        /* -------------------------------------------------------------
+           APP STATE
+           ------------------------------------------------------------- */
+        let state = {
+            authenticated: false,
+            habits: [],
+            logs: {}, // { 'YYYY-MM-DD': { habitId: { completed: true/false, progress: number, xpAwarded: number } } }
+            user: {
+                id: null,
+                username: 'guest',
+                displayName: 'Novice Adventurer',
+                avatarColor: 'indigo',
+                xp: 0,
+                totalXpEarned: 0,
+                bestStreak: 0
+            },
+            leaderboard: [],
+            currentDate: getTodayString()
+        };
+
+        let xpChartInstance = null;
+        let completionChartInstance = null;
+
+        /* -------------------------------------------------------------
+           INITIALIZATION & PERSISTENCE
+           ------------------------------------------------------------- */
+        function loadGuestState() {
+            const saved = localStorage.getItem('levelup_habit_tracker_state');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    state.habits = (Array.isArray(parsed.habits) && parsed.habits.length > 0) ? parsed.habits : cloneDefaults();
+                    state.logs = parsed.logs || {};
+                    state.user = {
+                        ...state.user,
+                        ...(parsed.user || {}),
+                        xp: (parsed.user && parsed.user.xp) || 0,
+                        totalXpEarned: (parsed.user && parsed.user.totalXpEarned) || 0,
+                        bestStreak: (parsed.user && parsed.user.bestStreak) || 0
+                    };
+                } catch (e) {
+                    state.habits = cloneDefaults();
+                }
+            } else {
+                state.habits = cloneDefaults();
+            }
+        }
+
+        function saveStateToStorageAndDB() {
+            state.user.bestStreak = Math.max(state.user.bestStreak || 0, calculateBestStreak());
+            if (!state.authenticated) {
+                localStorage.setItem('levelup_habit_tracker_state', JSON.stringify({
+                    habits: state.habits,
+                    logs: state.logs,
+                    user: state.user
+                }));
+            } else {
+                // Sync with backend database asynchronously
+                DatabaseAdapter.request('sync_state', {
+                    state: {
+                        habits: state.habits,
+                        logs: state.logs,
+                        user: state.user
+                    }
+                }).then(res => {
+                    if (res && res.leaderboard) {
+                        state.leaderboard = res.leaderboard;
+                    }
+                }).catch(err => console.error('DB sync error:', err));
+            }
+        }
+
+        function applyAuthenticatedState(data, leaderboard = []) {
+            state.authenticated = true;
+            state.user = {
+                id: data.user.id,
+                username: data.user.username,
+                email: data.user.email,
+                displayName: data.user.displayName || data.user.username,
+                avatarColor: data.user.avatarColor || 'indigo',
+                xp: Number(data.user.xp || 0),
+                totalXpEarned: Number(data.user.totalXpEarned || data.user.xp || 0),
+                bestStreak: Number(data.user.bestStreak || 0),
+                createdAt: data.user.createdAt
+            };
+            state.habits = (Array.isArray(data.habits) && data.habits.length > 0) ? data.habits : cloneDefaults();
+            state.logs = data.logs && typeof data.logs === 'object' && !Array.isArray(data.logs) ? data.logs : {};
+            if (Array.isArray(leaderboard) && leaderboard.length > 0) {
+                state.leaderboard = leaderboard;
+            }
+        }
+
+        window.onload = async function() {
+            loadGuestState();
+            initCharts();
+            refreshAllUI();
+
+            // Check if server-side PHP pre-injected session state
+            if (window.__INITIAL_SERVER_STATE__) {
+                const init = window.__INITIAL_SERVER_STATE__;
+                DatabaseAdapter.phpAvailable = true;
+                DatabaseAdapter.checkedPhp = true;
+                DatabaseAdapter.updateEngineBadge('PHP + SQL Active');
+                if (init.authenticated && init.data) {
+                    applyAuthenticatedState(init.data, init.leaderboard || []);
+                    refreshAllUI();
+                    return;
+                } else if (init.leaderboard) {
+                    state.leaderboard = init.leaderboard;
+                    renderLeaderboard();
+                }
+            }
+
+            // Probe session via DatabaseAdapter
+            try {
+                const res = await DatabaseAdapter.request('session');
+                if (res && res.ok) {
+                    if (res.leaderboard) state.leaderboard = res.leaderboard;
+                    if (res.authenticated && res.data) {
+                        applyAuthenticatedState(res.data, res.leaderboard || []);
+                    }
+                    refreshAllUI();
+                }
+            } catch (err) {
+                console.error('Session initialization error:', err);
+            }
+        };
+
+        function refreshAllUI() {
+            updateAuthUI();
+            updateDateHeader();
+            renderHabits();
+            updateUserRPGStats();
+            updateAnalyticsData();
+            updateChartDatasets();
+            renderHistoryLog();
+            renderLeaderboard();
+        }
+
+        /* -------------------------------------------------------------
+           AUTHENTICATION UI & HANDLERS
+           ------------------------------------------------------------- */
+        function updateAuthUI() {
+            const loggedInBox = document.getElementById('header-user-logged-in');
+            const guestBox = document.getElementById('header-user-guest');
+            const ctaBanner = document.getElementById('guest-cta-banner');
+            const profileTag = document.getElementById('user-profile-tag');
+            const avatarLevelBox = document.getElementById('user-avatar-level');
+
+            const grad = AVATAR_GRADIENTS[state.user.avatarColor] || AVATAR_GRADIENTS.indigo;
+            avatarLevelBox.className = `w-16 h-16 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl font-black shadow-lg shadow-indigo-500/30`;
+
+            if (state.authenticated) {
+                loggedInBox.classList.remove('hidden');
+                loggedInBox.classList.add('flex');
+                guestBox.classList.add('hidden');
+                ctaBanner.classList.add('hidden');
+
+                const initials = (state.user.displayName || state.user.username || 'U').substring(0, 2).toUpperCase();
+                const headerAvatar = document.getElementById('header-user-avatar');
+                headerAvatar.innerText = initials;
+                headerAvatar.className = `w-7 h-7 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center text-xs font-bold text-white uppercase`;
+
+                document.getElementById('header-user-name').innerText = state.user.displayName || state.user.username;
+                profileTag.innerHTML = `<i class="fa-solid fa-user-check mr-1"></i>@${state.user.username} (Database Synced)`;
+                profileTag.className = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] px-2.5 py-0.5 rounded-md font-semibold';
+            } else {
+                loggedInBox.classList.add('hidden');
+                loggedInBox.classList.remove('flex');
+                guestBox.classList.remove('hidden');
+                ctaBanner.classList.remove('hidden');
+                profileTag.innerText = 'Guest Mode (Unsynced)';
+                profileTag.className = 'bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[11px] px-2.5 py-0.5 rounded-md font-medium';
+            }
+        }
+
+        function openAuthModal(mode = 'login') {
+            document.getElementById('auth-error-box').classList.add('hidden');
+            switchAuthTab(mode);
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function switchAuthTab(mode) {
+            const loginForm = document.getElementById('login-form');
+            const regForm = document.getElementById('register-form');
+            const tabLogin = document.getElementById('auth-tab-login');
+            const tabReg = document.getElementById('auth-tab-register');
+            const errBox = document.getElementById('auth-error-box');
+            errBox.classList.add('hidden');
+
+            if (mode === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                tabLogin.className = 'py-2 rounded-lg text-xs font-bold transition bg-brand-600 text-white shadow';
+                tabReg.className = 'py-2 rounded-lg text-xs font-bold transition text-gray-400 hover:text-white';
+                document.getElementById('auth-modal-title').innerText = 'Sign In to LevelUp Life';
+            } else {
+                loginForm.classList.add('hidden');
+                regForm.classList.remove('hidden');
+                tabReg.className = 'py-2 rounded-lg text-xs font-bold transition bg-brand-600 text-white shadow';
+                tabLogin.className = 'py-2 rounded-lg text-xs font-bold transition text-gray-400 hover:text-white';
+                document.getElementById('auth-modal-title').innerText = 'Create Your Free Account';
+            }
+        }
+
+        function showAuthError(msg) {
+            const errBox = document.getElementById('auth-error-box');
+            errBox.innerText = msg;
+            errBox.classList.remove('hidden');
+        }
+
+        async function handleLoginSubmit(event) {
+            event.preventDefault();
+            const identifier = document.getElementById('login-identifier').value.trim();
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-submit-btn');
+            btn.disabled = true;
+            btn.innerText = 'Signing in...';
+
+            try {
+                const res = await DatabaseAdapter.request('login', { identifier, password });
+                if (!res.ok) {
+                    showAuthError(res.error || 'Login failed. Please check your credentials.');
+                } else {
+                    applyAuthenticatedState(res.data, res.leaderboard || []);
+                    closeAuthModal();
+                    refreshAllUI();
+                    showToast(res.message || `Welcome back, ${state.user.displayName}!`, 'level-up');
+                }
+            } catch (err) {
+                showAuthError('Network error while logging in.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Sign In to Account';
+            }
+        }
+
+        async function handleRegisterSubmit(event) {
+            event.preventDefault();
+            const displayName = document.getElementById('reg-display-name').value.trim();
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const avatarColor = document.getElementById('reg-avatar-color').value;
+            const importGuest = document.getElementById('reg-import-guest').checked;
+
+            const btn = document.getElementById('reg-submit-btn');
+            btn.disabled = true;
+            btn.innerText = 'Creating Account...';
+
+            const guestState = importGuest ? {
+                habits: state.habits,
+                logs: state.logs,
+                user: state.user
+            } : null;
+
+            try {
+                const res = await DatabaseAdapter.request('register', {
+                    displayName,
+                    username,
+                    email,
+                    password,
+                    avatarColor,
+                    guestState
+                });
+
+                if (!res.ok) {
+                    showAuthError(res.error || 'Registration failed.');
+                } else {
+                    applyAuthenticatedState(res.data, res.leaderboard || []);
+                    closeAuthModal();
+                    refreshAllUI();
+                    showToast(res.message || `Welcome aboard, ${state.user.displayName}!`, 'level-up');
+                }
+            } catch (err) {
+                showAuthError('Error creating account. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Create Free Account & Start Leveling Up';
+            }
+        }
+
+        async function handleLogout() {
+            await DatabaseAdapter.request('logout');
+            state.authenticated = false;
+            state.user = {
+                id: null,
+                username: 'guest',
+                displayName: 'Novice Adventurer',
+                avatarColor: 'indigo',
+                xp: 0,
+                totalXpEarned: 0,
+                bestStreak: 0
+            };
+            loadGuestState();
+            refreshAllUI();
+            showToast('Logged out safely. Switched to Guest Mode.', 'info');
+        }
+
+        /* -------------------------------------------------------------
+           TOAST NOTIFICATIONS
+           ------------------------------------------------------------- */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgCol = 'bg-brand-600 text-white';
+            let icon = 'fa-circle-check';
+            if (type === 'level-up') {
+                bgCol = 'bg-gradient-to-r from-amber-500 to-orange-600 text-dark-900 font-bold';
+                icon = 'fa-trophy';
+            } else if (type === 'info') {
+                bgCol = 'bg-dark-700 text-gray-200 border border-gray-600';
+                icon = 'fa-circle-info';
+            }
+
+            toast.className = `pointer-events-auto flex items-center space-x-3 px-4 py-3 rounded-xl shadow-2xl transition-all transform translate-y-2 opacity-0 ${bgCol}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-lg"></i><span class="text-sm font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        /* -------------------------------------------------------------
+           USER LEVEL, XP & STREAK SYSTEM
+           ------------------------------------------------------------- */
+        function calculateLevel(xp) {
+            let currentRank = RANKS[0];
+            let nextRank = RANKS[1];
+
+            for (let i = RANKS.length - 1; i >= 0; i--) {
+                if (xp >= RANKS[i].minXp) {
+                    currentRank = RANKS[i];
+                    nextRank = RANKS[i + 1] || { level: currentRank.level + 1, minXp: currentRank.minXp + 2000, title: "Legendary God" };
+                    break;
+                }
+            }
+            return { currentRank, nextRank };
+        }
+
+        function addXP(amount) {
+            const oldLevel = calculateLevel(state.user.xp).currentRank.level;
+            state.user.xp += amount;
+            state.user.totalXpEarned = (state.user.totalXpEarned || 0) + amount;
+            
+            const newLevel = calculateLevel(state.user.xp).currentRank.level;
+            updateUserRPGStats();
+
+            if (newLevel > oldLevel) {
+                showToast(`🎉 LEVEL UP! You reached Level ${newLevel}: ${calculateLevel(state.user.xp).currentRank.title}!`, 'level-up');
+            } else {
+                showToast(`+${amount} XP Earned! Saved to history!`, 'success');
+            }
+        }
+
+        function removeXP(amount) {
+            state.user.xp = Math.max(0, state.user.xp - amount);
+            updateUserRPGStats();
+        }
+
+        function countActiveHistoryDays() {
+            let activeDays = 0;
+            for (const dateStr of Object.keys(state.logs)) {
+                const dayLogs = state.logs[dateStr] || {};
+                const anyDone = Object.values(dayLogs).some(entry => entry && (entry.completed || entry.progress > 0));
+                if (anyDone) activeDays++;
+            }
+            return activeDays;
+        }
+
+        function updateUserRPGStats() {
+            const { currentRank, nextRank } = calculateLevel(state.user.xp);
+            
+            document.getElementById('header-level').innerText = currentRank.level;
+            document.getElementById('header-rank').innerText = currentRank.title;
+
+            document.getElementById('user-avatar-level').innerText = currentRank.level;
+            const displayTitle = state.authenticated
+                ? `${state.user.displayName} • ${currentRank.title}`
+                : currentRank.title;
+            document.getElementById('user-rank-title').innerText = displayTitle;
+            document.getElementById('user-total-xp-badge').innerText = `${state.user.xp} XP`;
+            
+            document.getElementById('current-xp').innerText = state.user.xp;
+            document.getElementById('next-level-xp').innerText = nextRank.minXp;
+            document.getElementById('next-level-num').innerText = nextRank.level;
+
+            const xpNeededForLevel = nextRank.minXp - currentRank.minXp;
+            const xpIntoLevel = state.user.xp - currentRank.minXp;
+            const progressPercent = Math.min(100, Math.max(0, (xpIntoLevel / xpNeededForLevel) * 100));
+            document.getElementById('xp-progress-bar').style.width = `${progressPercent}%`;
+
+            // Present (Today's) completion stats
+            const todayStr = getTodayString();
+            const dayLogs = state.logs[todayStr] || {};
+            const totalHabitsCount = state.habits.length;
+            let completedTodayCount = 0;
+
+            state.habits.forEach(h => {
+                if (dayLogs[h.id] && dayLogs[h.id].completed) {
+                    completedTodayCount++;
+                }
+            });
+
+            document.getElementById('stat-completed-today').innerText = `${completedTodayCount}/${totalHabitsCount}`;
+            
+            const rate = totalHabitsCount > 0 ? Math.round((completedTodayCount / totalHabitsCount) * 100) : 0;
+            document.getElementById('stat-rate').innerText = `${rate}%`;
+
+            const streak = calculateCurrentStreak();
+            document.getElementById('stat-streak').innerText = streak;
+            document.getElementById('header-streak-badge').innerHTML = `<i class="fa-solid fa-fire mr-1 text-amber-500"></i> ${streak} Day Streak`;
+            document.getElementById('stat-history-days').innerText = countActiveHistoryDays();
+        }
+
+        function calculateCurrentStreak() {
+            let streak = 0;
+            let checkDate = new Date();
+
+            for (let i = 0; i < 365; i++) {
+                const dateStr = getFormattedDate(checkDate);
+                const dayLogs = state.logs[dateStr];
+                
+                if (!dayLogs || state.habits.length === 0) {
+                    if (i === 0) {
+                        checkDate.setDate(checkDate.getDate() - 1);
+                        continue;
+                    }
+                    break;
+                }
+
+                let allCompleted = true;
+                for (let h of state.habits) {
+                    if (!dayLogs[h.id] || !dayLogs[h.id].completed) {
+                        allCompleted = false;
+                        break;
+                    }
+                }
+
+                if (allCompleted) {
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else {
+                    if (i === 0) {
+                        checkDate.setDate(checkDate.getDate() - 1);
+                        continue;
+                    }
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        function calculateBestStreak() {
+            let maxStreak = state.user.bestStreak || 0;
+            let currentStreakCheck = 0;
+            for (let i = 90; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = getFormattedDate(d);
+                const dayLogs = state.logs[dateStr];
+                
+                if (dayLogs && state.habits.length > 0) {
+                    let allDone = true;
+                    for (let h of state.habits) {
+                        if (!dayLogs[h.id] || !dayLogs[h.id].completed) {
+                            allDone = false;
+                            break;
+                        }
+                    }
+                    if (allDone) {
+                        currentStreakCheck++;
+                        if (currentStreakCheck > maxStreak) maxStreak = currentStreakCheck;
+                    } else {
+                        currentStreakCheck = 0;
+                    }
+                } else {
+                    currentStreakCheck = 0;
+                }
+            }
+            return maxStreak;
+        }
+
+        /* -------------------------------------------------------------
+           NAVIGATION & TABS
+           ------------------------------------------------------------- */
+        function switchTab(tabId) {
+            ['habits', 'history', 'analytics', 'leaderboard'].forEach(id => {
+                const tabEl = document.getElementById(`tab-${id}`);
+                const btnEl = document.getElementById(`tab-btn-${id}`);
+                if (id === tabId) {
+                    tabEl.classList.remove('hidden');
+                    btnEl.className = "px-4 py-2 rounded-xl text-sm font-medium transition-all bg-brand-600 text-white shadow-lg shadow-brand-500/20 flex items-center space-x-2 whitespace-nowrap";
+                } else {
+                    tabEl.classList.add('hidden');
+                    btnEl.className = "px-4 py-2 rounded-xl text-sm font-medium transition-all bg-dark-800 text-gray-400 hover:text-white hover:bg-dark-700 flex items-center space-x-2 whitespace-nowrap";
+                }
+            });
+
+            if (tabId === 'analytics') {
+                updateAnalyticsData();
+                updateChartDatasets();
+            } else if (tabId === 'history') {
+                renderHistoryLog();
+            } else if (tabId === 'leaderboard') {
+                refreshLeaderboard();
+            }
+        }
+
+        /* -------------------------------------------------------------
+           DATE MANAGEMENT FOR PRESENT & PAST HABITS
+           ------------------------------------------------------------- */
+        function changeDate(delta) {
+            const [y, m, d] = state.currentDate.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            dateObj.setDate(dateObj.getDate() + delta);
+            state.currentDate = getFormattedDate(dateObj);
+            updateDateHeader();
+            renderHabits();
+        }
+
+        function resetToToday() {
+            state.currentDate = getTodayString();
+            updateDateHeader();
+            renderHabits();
+        }
+
+        function updateDateHeader() {
+            const todayStr = getTodayString();
+            const isToday = state.currentDate === todayStr;
+            
+            const [y, m, d] = state.currentDate.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+            const dateStringFormatted = dateObj.toLocaleDateString('en-US', options);
+
+            document.getElementById('current-date-display').innerText = isToday ? 'Today (Present)' : dateStringFormatted;
+            document.getElementById('current-date-sub').innerText = isToday
+                ? dateStringFormatted
+                : (dateObj.toDateString() === new Date(Date.now() - 86400000).toDateString() ? 'Yesterday • Historical Log' : 'Historical Date Log');
+
+            const picker = document.getElementById('direct-date-picker');
+            if (picker) picker.value = state.currentDate;
+
+            const jumpBtn = document.getElementById('today-jump-btn');
+            const livePill = document.getElementById('present-live-pill');
+            if (!isToday) {
+                jumpBtn.classList.remove('hidden');
+                livePill.classList.add('hidden');
+            } else {
+                jumpBtn.classList.add('hidden');
+                livePill.classList.remove('hidden');
+            }
+        }
+
+        /* -------------------------------------------------------------
+           HABITS RENDERING & INTERACTION
+           ------------------------------------------------------------- */
+        function renderHabits() {
+            const container = document.getElementById('habits-list-container');
+            const emptyState = document.getElementById('habits-empty-state');
+            const filterVal = document.getElementById('habit-filter').value;
+
+            container.innerHTML = '';
+
+            const dayLogs = state.logs[state.currentDate] || {};
+
+            // Update selected day summary bar
+            let dayCompletedCount = 0;
+            let dayXpEarned = 0;
+            state.habits.forEach(h => {
+                if (dayLogs[h.id] && dayLogs[h.id].completed) {
+                    dayCompletedCount++;
+                    dayXpEarned += Number(h.xp || 0);
+                }
+            });
+            const dayPercent = state.habits.length > 0 ? Math.round((dayCompletedCount / state.habits.length) * 100) : 0;
+            document.getElementById('selected-day-summary-text').innerText = `${dayCompletedCount} of ${state.habits.length} habits completed (${state.currentDate === getTodayString() ? 'Present Day' : state.currentDate})`;
+            document.getElementById('selected-day-xp').innerText = `+${dayXpEarned} XP`;
+            document.getElementById('selected-day-percent').innerText = `${dayPercent}%`;
+
+            let filteredHabits = state.habits;
+            if (filterVal !== 'all') {
+                filteredHabits = state.habits.filter(h => h.category === filterVal);
+            }
+
+            if (filteredHabits.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredHabits.forEach(habit => {
+                const habitLog = dayLogs[habit.id] || { completed: false, progress: 0 };
+                const isCompleted = Boolean(habitLog.completed);
+
+                // Calculate total historical completions for this specific habit
+                let habitHistoryTotal = 0;
+                for (const dKey of Object.keys(state.logs)) {
+                    if (state.logs[dKey] && state.logs[dKey][habit.id] && state.logs[dKey][habit.id].completed) {
+                        habitHistoryTotal++;
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.className = `bg-dark-800 border ${isCompleted ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-gray-800'} rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition-all shadow-md hover:border-gray-700`;
+
+                let progressControl = '';
+                if (habit.targetType === 'numeric') {
+                    const currentProg = habitLog.progress || 0;
+                    const percent = Math.min(100, Math.round((currentProg / habit.targetGoal) * 100));
+                    progressControl = `
+                        <div class="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between text-xs">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-gray-400">Progress:</span>
+                                <span class="font-bold text-white">${currentProg} / ${habit.targetGoal} ${habit.targetUnit || ''}</span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="adjustProgress('${habit.id}', -1)" class="w-7 h-7 bg-dark-700 hover:bg-dark-600 rounded-lg flex items-center justify-center text-gray-300 font-bold">-</button>
+                                <button onclick="adjustProgress('${habit.id}', 1)" class="w-7 h-7 bg-dark-700 hover:bg-dark-600 rounded-lg flex items-center justify-center text-gray-300 font-bold">+</button>
+                            </div>
+                        </div>
+                        <div class="w-full bg-dark-900 h-1.5 rounded-full overflow-hidden mt-2">
+                            <div class="bg-emerald-500 h-full transition-all duration-300" style="width: ${percent}%"></div>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-11 h-11 rounded-xl bg-dark-700 flex items-center justify-center text-brand-400 text-lg shadow-inner">
+                                <i class="fa-solid ${habit.icon || 'fa-check'}"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-base ${isCompleted ? 'line-through text-gray-400' : ''}">${escapeHtml(habit.name)}</h4>
+                                <div class="flex flex-wrap items-center gap-2 mt-1">
+                                    <span class="text-[11px] bg-dark-700 px-2 py-0.5 rounded text-gray-300 font-medium">${escapeHtml(habit.category)}</span>
+                                    <span class="text-[11px] text-amber-400 font-semibold"><i class="fa-solid fa-bolt mr-0.5"></i> +${habit.xp} XP</span>
+                                    <span class="text-[10px] text-gray-400"><i class="fa-solid fa-clock-rotate-left mr-0.5"></i> ${habitHistoryTotal}x in history</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action controls -->
+                        <div class="flex items-center space-x-2">
+                            <button onclick="toggleHabit('${habit.id}')" class="w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isCompleted ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' : 'bg-dark-700 text-gray-500 hover:text-white hover:bg-dark-600'}">
+                                <i class="fa-solid fa-check text-base"></i>
+                            </button>
+                            <div class="relative group">
+                                <button class="w-8 h-8 rounded-lg text-gray-500 hover:text-gray-300 flex items-center justify-center"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                <div class="absolute right-0 mt-1 w-28 bg-dark-700 border border-gray-600 rounded-xl shadow-xl hidden group-hover:block z-10 py-1">
+                                    <button onclick="openEditHabitModal('${habit.id}')" class="w-full text-left px-3 py-1.5 text-xs text-gray-200 hover:bg-dark-600 flex items-center space-x-1.5"><i class="fa-solid fa-pen"></i><span>Edit</span></button>
+                                    <button onclick="deleteHabit('${habit.id}')" class="w-full text-left px-3 py-1.5 text-xs text-rose-400 hover:bg-dark-600 flex items-center space-x-1.5"><i class="fa-solid fa-trash"></i><span>Delete</span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ${progressControl}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function toggleHabit(habitId, specificDate = null) {
+            const dateStr = specificDate || state.currentDate;
+            if (!state.logs[dateStr]) {
+                state.logs[dateStr] = {};
+            }
+            if (!state.logs[dateStr][habitId]) {
+                state.logs[dateStr][habitId] = { completed: false, progress: 0, xpAwarded: 0 };
+            }
+
+            const habit = state.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            const currentStatus = Boolean(state.logs[dateStr][habitId].completed);
+            const nextStatus = !currentStatus;
+            state.logs[dateStr][habitId].completed = nextStatus;
+
+            if (nextStatus) {
+                if (habit.targetType === 'numeric') {
+                    state.logs[dateStr][habitId].progress = habit.targetGoal;
+                } else {
+                    state.logs[dateStr][habitId].progress = 1;
+                }
+                state.logs[dateStr][habitId].xpAwarded = habit.xp;
+                addXP(habit.xp);
+            } else {
+                if (habit.targetType === 'numeric') {
+                    state.logs[dateStr][habitId].progress = 0;
+                }
+                state.logs[dateStr][habitId].xpAwarded = 0;
+                removeXP(habit.xp);
+                showToast(`Removed ${habit.xp} XP`, 'info');
+            }
+
+            persistHabitLogChange(habitId, dateStr);
+            renderHabits();
+            updateUserRPGStats();
+            renderHistoryLog();
+            updateChartDatasets();
+        }
+
+        function adjustProgress(habitId, delta) {
+            const dateStr = state.currentDate;
+            if (!state.logs[dateStr]) state.logs[dateStr] = {};
+            if (!state.logs[dateStr][habitId]) state.logs[dateStr][habitId] = { completed: false, progress: 0, xpAwarded: 0 };
+
+            const habit = state.habits.find(h => h.id === habitId);
+            if (!habit) return;
+            let log = state.logs[dateStr][habitId];
+
+            log.progress = Math.max(0, (log.progress || 0) + delta);
+            
+            const wasCompleted = Boolean(log.completed);
+            if (log.progress >= habit.targetGoal) {
+                log.completed = true;
+                log.xpAwarded = habit.xp;
+                if (!wasCompleted) {
+                    addXP(habit.xp);
+                }
+            } else {
+                log.completed = false;
+                log.xpAwarded = 0;
+                if (wasCompleted) {
+                    removeXP(habit.xp);
+                    showToast(`Habit incomplete. Removed ${habit.xp} XP`, 'info');
+                }
+            }
+
+            persistHabitLogChange(habitId, dateStr);
+            renderHabits();
+            updateUserRPGStats();
+            renderHistoryLog();
+            updateChartDatasets();
+        }
+
+        function persistHabitLogChange(habitId, dateStr) {
+            state.user.bestStreak = Math.max(state.user.bestStreak || 0, calculateBestStreak());
+            if (state.authenticated && DatabaseAdapter.phpAvailable) {
+                const entry = (state.logs[dateStr] && state.logs[dateStr][habitId]) || { completed: false, progress: 0, xpAwarded: 0 };
+                DatabaseAdapter.request('log_habit', {
+                    habitId,
+                    date: dateStr,
+                    completed: entry.completed,
+                    progress: entry.progress,
+                    xpAwarded: entry.xpAwarded || 0,
+                    userXp: state.user.xp,
+                    totalXpEarned: state.user.totalXpEarned,
+                    bestStreak: state.user.bestStreak
+                }).then(res => {
+                    if (res && res.leaderboard) state.leaderboard = res.leaderboard;
+                }).catch(console.error);
+            } else {
+                saveStateToStorageAndDB();
+            }
+        }
+
+        /* -------------------------------------------------------------
+           MODAL & FORM MANAGEMENT FOR HABIT CREATION/EDITING
+           ------------------------------------------------------------- */
+        function openAddHabitModal() {
+            document.getElementById('modal-title').innerText = 'Create New Habit';
+            document.getElementById('habit-form').reset();
+            document.getElementById('habit-id').value = '';
+            toggleTargetFields();
+            document.getElementById('habit-modal').classList.remove('hidden');
+        }
+
+        function openEditHabitModal(habitId) {
+            const habit = state.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            document.getElementById('modal-title').innerText = 'Edit Habit';
+            document.getElementById('habit-id').value = habit.id;
+            document.getElementById('habit-name').value = habit.name;
+            document.getElementById('habit-category').value = habit.category;
+            document.getElementById('habit-icon').value = habit.icon;
+            document.getElementById('habit-target-type').value = habit.targetType;
+            document.getElementById('habit-target-goal').value = habit.targetGoal || 1;
+            document.getElementById('habit-target-unit').value = habit.targetUnit || '';
+            document.getElementById('habit-xp').value = habit.xp || 20;
+
+            toggleTargetFields();
+            document.getElementById('habit-modal').classList.remove('hidden');
+        }
+
+        function closeHabitModal() {
+            document.getElementById('habit-modal').classList.add('hidden');
+        }
+
+        function toggleTargetFields() {
+            const type = document.getElementById('habit-target-type').value;
+            const goalContainer = document.getElementById('target-value-container');
+            const unitContainer = document.getElementById('target-unit-container');
+
+            if (type === 'numeric') {
+                goalContainer.classList.remove('hidden');
+                unitContainer.classList.remove('hidden');
+            } else {
+                goalContainer.classList.add('hidden');
+                unitContainer.classList.add('hidden');
+            }
+        }
+
+        function handleHabitSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById('habit-id').value;
+            const name = document.getElementById('habit-name').value.trim();
+            const category = document.getElementById('habit-category').value;
+            const icon = document.getElementById('habit-icon').value;
+            const targetType = document.getElementById('habit-target-type').value;
+            const targetGoal = parseInt(document.getElementById('habit-target-goal').value) || 1;
+            const targetUnit = document.getElementById('habit-target-unit').value.trim();
+            const xp = parseInt(document.getElementById('habit-xp').value) || 20;
+
+            let savedHabit = null;
+            if (id) {
+                const habit = state.habits.find(h => h.id === id);
+                if (habit) {
+                    habit.name = name;
+                    habit.category = category;
+                    habit.icon = icon;
+                    habit.targetType = targetType;
+                    habit.targetGoal = targetGoal;
+                    habit.targetUnit = targetUnit;
+                    habit.xp = xp;
+                    savedHabit = habit;
+                }
+                showToast('Habit updated in database!', 'success');
+            } else {
+                savedHabit = {
+                    id: 'h_' + Date.now(),
+                    name,
+                    category,
+                    icon,
+                    targetType,
+                    targetGoal,
+                    targetUnit,
+                    xp
+                };
+                state.habits.push(savedHabit);
+                showToast('New habit created!', 'success');
+            }
+
+            if (state.authenticated && DatabaseAdapter.phpAvailable && savedHabit) {
+                DatabaseAdapter.request('save_habit', { habit: savedHabit }).catch(console.error);
+            } else {
+                saveStateToStorageAndDB();
+            }
+
+            closeHabitModal();
+            renderHabits();
+            updateUserRPGStats();
+            renderHistoryLog();
+            updateChartDatasets();
+        }
+
+        function deleteHabit(habitId) {
+            if (!confirm('Are you sure you want to delete this habit?')) return;
+            state.habits = state.habits.filter(h => h.id !== habitId);
+
+            if (state.authenticated && DatabaseAdapter.phpAvailable) {
+                DatabaseAdapter.request('delete_habit', { habitId }).catch(console.error);
+            } else {
+                saveStateToStorageAndDB();
+            }
+
+            renderHabits();
+            updateUserRPGStats();
+            renderHistoryLog();
+            updateChartDatasets();
+            showToast('Habit deleted', 'info');
+        }
+
+        /* -------------------------------------------------------------
+           ANALYTICS & CHARTS
+           ------------------------------------------------------------- */
+        function updateAnalyticsData() {
+            document.getElementById('analytics-total-xp').innerText = `${state.user.totalXpEarned || state.user.xp} XP`;
+            document.getElementById('analytics-total-habits').innerText = state.habits.length;
+
+            const maxStreak = calculateBestStreak();
+            document.getElementById('analytics-best-streak').innerText = `${maxStreak} Days`;
+
+            let totalPossible = 7 * state.habits.length;
+            let totalCompleted = 0;
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = getFormattedDate(d);
+                const dayLogs = state.logs[dateStr] || {};
+                state.habits.forEach(h => {
+                    if (dayLogs[h.id] && dayLogs[h.id].completed) totalCompleted++;
+                });
+            }
+            const overallRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+            document.getElementById('analytics-overall-rate').innerText = `${overallRate}%`;
+        }
+
+        function compute7DayChartSeries() {
+            const labels = [];
+            const xpData = [];
+            const completionData = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = getFormattedDate(d);
+                labels.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }));
+
+                let dayXp = 0;
+                let dayCompleted = 0;
+                const dayLogs = state.logs[dateStr] || {};
+                state.habits.forEach(h => {
+                    if (dayLogs[h.id] && dayLogs[h.id].completed) {
+                        dayXp += Number(h.xp || 0);
+                        dayCompleted++;
+                    }
+                });
+                xpData.push(dayXp);
+
+                const rate = state.habits.length > 0 ? Math.round((dayCompleted / state.habits.length) * 100) : 0;
+                completionData.push(rate);
+            }
+            return { labels, xpData, completionData };
+        }
+
+        function initCharts() {
+            const { labels, xpData, completionData } = compute7DayChartSeries();
+
+            const ctxXp = document.getElementById('xpChart').getContext('2d');
+            xpChartInstance = new Chart(ctxXp, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'XP Earned',
+                        data: xpData,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' } },
+                        x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+                    }
+                }
+            });
+
+            const ctxComp = document.getElementById('completionChart').getContext('2d');
+            completionChartInstance = new Chart(ctxComp, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Completion %',
+                        data: completionData,
+                        backgroundColor: '#10b981',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { max: 100, grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' } },
+                        x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+                    }
+                }
+            });
+        }
+
+        function updateChartDatasets() {
+            if (!xpChartInstance || !completionChartInstance) return;
+            const { labels, xpData, completionData } = compute7DayChartSeries();
+            xpChartInstance.data.labels = labels;
+            xpChartInstance.data.datasets[0].data = xpData;
+            xpChartInstance.update();
+
+            completionChartInstance.data.labels = labels;
+            completionChartInstance.data.datasets[0].data = completionData;
+            completionChartInstance.update();
+        }
+
+        /* -------------------------------------------------------------
+           HISTORY & PRESENT LOG RENDERING
+           ------------------------------------------------------------- */
+        function renderHistoryLog() {
+            const container = document.getElementById('history-log-container');
+            const heatmapGrid = document.getElementById('history-heatmap-grid');
+            const filterMode = (document.getElementById('history-filter-mode') || {}).value || 'all30';
+            if (!container || !heatmapGrid) return;
+
+            container.innerHTML = '';
+            heatmapGrid.innerHTML = '';
+
+            const todayStr = getTodayString();
+            const totalHabits = state.habits.length;
+
+            // Calculate Present + All-Time summary metrics
+            const todayLogs = state.logs[todayStr] || {};
+            let todayDone = 0;
+            let todayXp = 0;
+            state.habits.forEach(h => {
+                if (todayLogs[h.id] && todayLogs[h.id].completed) {
+                    todayDone++;
+                    todayXp += Number(h.xp || 0);
+                }
+            });
+
+            let totalCheckins = 0;
+            let perfectDaysCount = 0;
+            const allDatesSet = new Set();
+
+            // Include last 30 days + any older dates in state.logs
+            for (let i = 0; i < 30; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                allDatesSet.add(getFormattedDate(d));
+            }
+            Object.keys(state.logs).forEach(d => {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(d)) allDatesSet.add(d);
+            });
+
+            const sortedDatesDesc = Array.from(allDatesSet).sort((a, b) => b.localeCompare(a));
+
+            sortedDatesDesc.forEach(dateStr => {
+                const dLogs = state.logs[dateStr] || {};
+                let doneOnDate = 0;
+                state.habits.forEach(h => {
+                    if (dLogs[h.id] && dLogs[h.id].completed) {
+                        doneOnDate++;
+                        totalCheckins++;
+                    }
+                });
+                if (totalHabits > 0 && doneOnDate === totalHabits) {
+                    perfectDaysCount++;
+                }
+            });
+
+            document.getElementById('history-present-summary').innerText = `${todayDone} / ${totalHabits} Done`;
+            document.getElementById('history-present-xp').innerText = `+${todayXp} XP earned in Present (Today)`;
+            document.getElementById('history-active-days').innerText = `${countActiveHistoryDays()} Days`;
+            document.getElementById('history-total-checkins').innerText = `${totalCheckins}`;
+            document.getElementById('history-perfect-days').innerText = `${perfectDaysCount} Days`;
+
+            // Render 30-Day Heatmap (oldest to newest, ending with Present)
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = getFormattedDate(d);
+                const dLogs = state.logs[dateStr] || {};
+                let doneCount = 0;
+                state.habits.forEach(h => {
+                    if (dLogs[h.id] && dLogs[h.id].completed) doneCount++;
+                });
+                const pct = totalHabits > 0 ? Math.round((doneCount / totalHabits) * 100) : 0;
+
+                let cellColor = 'bg-dark-700 border-gray-700 text-gray-400';
+                if (pct === 100 && totalHabits > 0) {
+                    cellColor = 'bg-emerald-500 border-emerald-400 text-dark-900 font-bold';
+                } else if (pct >= 50) {
+                    cellColor = 'bg-emerald-700/70 border-emerald-500/40 text-emerald-100';
+                } else if (pct > 0) {
+                    cellColor = 'bg-emerald-900/60 border-emerald-700/40 text-emerald-300';
+                }
+
+                const isPresent = dateStr === todayStr;
+                const cell = document.createElement('button');
+                cell.type = 'button';
+                cell.onclick = () => jumpToDate(dateStr);
+                cell.title = `${dateStr}${isPresent ? ' (PRESENT)' : ''}: ${doneCount}/${totalHabits} (${pct}%)`;
+                cell.className = `h-10 rounded-xl border ${cellColor} ${isPresent ? 'ring-2 ring-brand-400' : ''} flex flex-col items-center justify-center text-[10px] transition hover:scale-105`;
+                cell.innerHTML = `
+                    <span>${d.getDate()}</span>
+                    <span class="text-[8px] opacity-80">${isPresent ? 'NOW' : pct + '%'}</span>
+                `;
+                heatmapGrid.appendChild(cell);
+            }
+
+            // Render Detailed History & Present Timeline Rows
+            sortedDatesDesc.forEach(dateStr => {
+                const dayLogs = state.logs[dateStr] || {};
+                let completedCount = 0;
+                let dayXp = 0;
+
+                state.habits.forEach(h => {
+                    if (dayLogs[h.id] && dayLogs[h.id].completed) {
+                        completedCount++;
+                        dayXp += Number(h.xp || 0);
+                    }
+                });
+
+                const percent = totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
+                const isPresent = dateStr === todayStr;
+
+                // Apply filter
+                if (filterMode === 'present' && !isPresent) return;
+                if (filterMode === 'logged' && completedCount === 0 && !isPresent) return;
+                if (filterMode === 'perfect' && (percent < 100 || totalHabits === 0)) return;
+
+                const [y, m, dayNum] = dateStr.split('-').map(Number);
+                const dObj = new Date(y, m - 1, dayNum);
+                const formattedTitle = dObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+                // Build per-habit status chips
+                const habitChipsHtml = state.habits.map(h => {
+                    const hLog = dayLogs[h.id] || { completed: false, progress: 0 };
+                    const done = Boolean(hLog.completed);
+                    const numericInfo = h.targetType === 'numeric' ? ` (${hLog.progress || 0}/${h.targetGoal} ${escapeHtml(h.targetUnit || '')})` : '';
+                    return `
+                        <button type="button" onclick="toggleHabit('${h.id}', '${dateStr}')" title="Click to toggle ${escapeHtml(h.name)} on ${dateStr}"
+                            class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs border transition ${
+                                done
+                                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                                    : 'bg-dark-800 border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'
+                            }">
+                            <i class="fa-solid ${done ? 'fa-circle-check text-emerald-400' : 'fa-circle text-gray-600'} text-[11px]"></i>
+                            <span>${escapeHtml(h.name)}${numericInfo}</span>
+                        </button>
+                    `;
+                }).join('');
+
+                const row = document.createElement('div');
+                row.className = `${isPresent ? 'bg-gradient-to-r from-brand-900/25 to-dark-900/80 border-brand-500/40' : 'bg-dark-900/50 border-gray-800'} border rounded-2xl p-4 flex flex-col gap-3 hover:border-gray-700 transition`;
+                
+                row.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-11 h-11 rounded-xl ${percent === 100 && totalHabits > 0 ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-dark-700 text-gray-300'} flex items-center justify-center font-bold text-sm shrink-0">
+                                ${percent}%
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h5 class="font-bold text-white text-sm">${formattedTitle}</h5>
+                                    ${isPresent
+                                        ? '<span class="px-2 py-0.5 text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">Present Day (Today)</span>'
+                                        : '<span class="px-2 py-0.5 text-[10px] font-medium bg-dark-700 text-gray-400 rounded-full">History Record</span>'
+                                    }
+                                    <span class="text-xs text-amber-400 font-semibold"><i class="fa-solid fa-bolt mr-0.5"></i>+${dayXp} XP</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-0.5">${completedCount} of ${totalHabits} habits completed</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="jumpToDate('${dateStr}')" class="text-xs bg-dark-700 hover:bg-brand-600 text-gray-200 hover:text-white px-3 py-1.5 rounded-xl transition flex items-center space-x-1.5">
+                                <i class="fa-solid fa-calendar-day"></i>
+                                <span>Open Day View</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-800/80">
+                        ${habitChipsHtml || '<span class="text-xs text-gray-500">No habits configured.</span>'}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function jumpToDate(dateStr) {
+            if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+            state.currentDate = dateStr;
+            updateDateHeader();
+            renderHabits();
+            switchTab('habits');
+            showToast(`Viewing habits for ${dateStr === getTodayString() ? 'Today (Present)' : dateStr}`, 'info');
+        }
+
+        function exportUserHistory() {
+            const exportPayload = {
+                exportedAt: new Date().toISOString(),
+                user: state.user,
+                habits: state.habits,
+                logs: state.logs
+            };
+            const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `levelup_history_${state.user.username || 'user'}_${getTodayString()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showToast('Habit history exported as JSON!', 'success');
+        }
+
+        /* -------------------------------------------------------------
+           PUBLIC MULTI-USER LEADERBOARD
+           ------------------------------------------------------------- */
+        async function refreshLeaderboard() {
+            try {
+                const res = await DatabaseAdapter.request('leaderboard');
+                if (res && res.leaderboard) {
+                    state.leaderboard = res.leaderboard;
+                }
+            } catch (_) {}
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboard-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let rows = Array.isArray(state.leaderboard) ? [...state.leaderboard] : [];
+            // Ensure current user is visible in leaderboard preview
+            const currentInList = rows.some(r => r.username === state.user.username);
+            if (!currentInList) {
+                rows.push({
+                    rank: rows.length + 1,
+                    username: state.user.username || 'guest',
+                    displayName: state.authenticated ? state.user.displayName : 'You (Guest Preview)',
+                    avatarColor: state.user.avatarColor || 'indigo',
+                    xp: state.user.xp || 0,
+                    bestStreak: calculateBestStreak()
+                });
+                rows.sort((a, b) => (b.xp - a.xp) || ((b.bestStreak || 0) - (a.bestStreak || 0)));
+                rows.forEach((r, idx) => r.rank = idx + 1);
+            }
+
+            rows.forEach(entry => {
+                const { currentRank } = calculateLevel(entry.xp || 0);
+                const grad = AVATAR_GRADIENTS[entry.avatarColor] || AVATAR_GRADIENTS.indigo;
+                const isMe = state.authenticated && entry.username === state.user.username;
+
+                let medalHtml = `<span class="text-sm font-bold text-gray-400">#${entry.rank}</span>`;
+                if (entry.rank === 1) medalHtml = `<i class="fa-solid fa-crown text-amber-400 text-lg"></i>`;
+                else if (entry.rank === 2) medalHtml = `<i class="fa-solid fa-medal text-gray-300 text-lg"></i>`;
+                else if (entry.rank === 3) medalHtml = `<i class="fa-solid fa-medal text-amber-600 text-lg"></i>`;
+
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between p-4 rounded-2xl border ${isMe ? 'bg-brand-900/20 border-brand-500/40' : 'bg-dark-900/50 border-gray-800'} transition`;
+                item.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <div class="w-8 text-center">${medalHtml}</div>
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center font-bold text-white uppercase text-sm">
+                            ${escapeHtml((entry.displayName || entry.username || 'U').substring(0, 2))}
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-white text-sm">${escapeHtml(entry.displayName || entry.username)}</span>
+                                <span class="text-xs text-gray-400">@${escapeHtml(entry.username)}</span>
+                                ${isMe ? '<span class="px-2 py-0.5 text-[10px] bg-brand-600 text-white rounded-full font-semibold">YOU</span>' : ''}
+                            </div>
+                            <div class="text-xs text-brand-400 font-medium">Level ${currentRank.level} &bull; ${currentRank.title}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4 text-right">
+                        <div class="hidden sm:block">
+                            <div class="text-xs font-bold text-amber-400"><i class="fa-solid fa-fire mr-1"></i>${entry.bestStreak || 0}d</div>
+                            <div class="text-[10px] text-gray-500 uppercase">Best Streak</div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-extrabold text-white">${entry.xp || 0} XP</div>
+                            <div class="text-[10px] text-gray-500 uppercase">Total Score</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

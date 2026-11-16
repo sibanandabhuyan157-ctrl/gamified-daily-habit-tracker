@@ -1,0 +1,7 @@
+# Ignore runtime SQLite database files & OS artifacts
+database/*.sqlite
+database/*.sqlite-shm
+database/*.sqlite-wal
+.DS_Store
+Thumbs.db
+.env
